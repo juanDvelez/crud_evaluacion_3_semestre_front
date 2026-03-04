@@ -161,21 +161,21 @@ function limpiarCarrito() {
 // ============================================
 
 /**
- * Crear pedido en el API
- * @param {Object} datosPedido - Datos del pedido
- * @returns {Promise} Respuesta del API
+ * Crear cliente en el API
+ * @param {Object} datosCliente - {nombre, apellido, email, celular, direccion, direccion2, descripcion}
+ * @returns {Promise} Respuesta del API con id_cliente
  */
-async function crearPedido(datosPedido) {
+async function crearCliente(datosCliente) {
     try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), CONFIG.TIMEOUT);
         
-        const response = await fetch(`${CONFIG.API_BASE}/pedidos`, {
+        const response = await fetch(`${CONFIG.API_BASE}/clientes`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify(datosPedido),
+            body: JSON.stringify(datosCliente),
             signal: controller.signal
         });
         
@@ -183,7 +183,52 @@ async function crearPedido(datosPedido) {
         
         if (!response.ok) {
             const error = await response.json();
-            throw new Error(error.mensaje || `Error HTTP ${response.status}`);
+            throw new Error(error.message || `Error HTTP ${response.status}`);
+        }
+        
+        return await response.json();
+        
+    } catch (error) {
+        if (error.name === 'AbortError') {
+            throw new Error('La solicitud tardó demasiado tiempo');
+        }
+        throw error;
+    }
+}
+
+/**
+ * Crear pedido en el API
+ * @param {Object} datosPedido - Datos del pedido {id_cliente, metodo_pago, productos, descuento, aumento}
+ * @returns {Promise} Respuesta del API
+ */
+async function crearPedido(datosPedido) {
+    try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), CONFIG.TIMEOUT);
+        
+        // Asegurar que la estructura es correcta
+        const pedidoFormateado = {
+            id_cliente: datosPedido.id_cliente,
+            metodo_pago: datosPedido.metodo_pago,
+            productos: datosPedido.productos || [],
+            descuento: datosPedido.descuento || 0,
+            aumento: datosPedido.aumento || 0
+        };
+        
+        const response = await fetch(`${CONFIG.API_BASE}/pedidos`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(pedidoFormateado),
+            signal: controller.signal
+        });
+        
+        clearTimeout(timeoutId);
+        
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.message || `Error HTTP ${response.status}`);
         }
         
         return await response.json();
@@ -388,6 +433,7 @@ window.Carrito = {
     calcularImpuesto,
     calcularTotal,
     limpiarCarrito,
+    crearCliente,
     crearPedido,
     obtenerProductosAPI,
     obtenerClientePorEmail,

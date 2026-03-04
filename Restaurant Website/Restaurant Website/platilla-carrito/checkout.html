@@ -301,6 +301,9 @@
        
        /**
         * Procesar el pedido
+        * 1. Valida formulario
+        * 2. Crea o obtiene cliente
+        * 3. Crea pedido con estructura correcta del backend
         */
        async function procesarPedido() {
            try {
@@ -310,22 +313,23 @@
                const email = document.getElementById('email-checkout').value.trim();
                const celular = document.getElementById('celular-checkout').value.trim();
                const direccion = document.getElementById('direccion-checkout').value.trim();
+               const direccion2 = document.getElementById('direccion2-checkout').value.trim();
                const notas = document.getElementById('notas-checkout').value.trim();
                const metodoPago = document.querySelector('input[name="metodo-pago"]:checked').value;
                
                // Validar campos requeridos
-               if (!nombres) throw new Error('Nombres es requerido');
-               if (!apellidos) throw new Error('Apellidos es requerido');
-               if (!email) throw new Error('Email es requerido');
-               if (!celular) throw new Error('Celular es requerido');
-               if (!direccion) throw new Error('Dirección es requerido');
+               if (!Carrito.validarRequerido(nombres)) throw new Error('Nombres es requerido');
+               if (!Carrito.validarRequerido(apellidos)) throw new Error('Apellidos es requerido');
+               if (!Carrito.validarRequerido(email)) throw new Error('Email es requerido');
+               if (!Carrito.validarRequerido(celular)) throw new Error('Celular es requerido');
+               if (!Carrito.validarRequerido(direccion)) throw new Error('Dirección es requerido');
                
                // Validar email
                if (!Carrito.validarEmail(email)) {
                    throw new Error('Email no válido');
                }
                
-               // Validar teléfono
+               // Validar teléfono (11-15 dígitos)
                if (!Carrito.validarTelefono(celular)) {
                    throw new Error('Celular debe tener entre 11 y 15 dígitos');
                }
@@ -336,42 +340,87 @@
                    throw new Error('El carrito está vacío');
                }
                
-               // 3. Preparar datos del pedido
-               const productos = carrito.map(item => ({
-                   id_producto: item.id,
-                   cantidad: item.cantidad
-               }));
-               
-               const datospedido = {
-                   nombre_cliente: nombres + ' ' + apellidos,
-                   email: email,
-                   telefono: celular,
-                   direccion: direccion,
-                   metodo_pago: metodoPago,
-                   estado: 'pendiente',
-                   total: Carrito.calcularTotal(),
-                   notas: notas,
-                   productos: productos
-               };
-               
-               // 4. Enviar pedido
+               // Mostrar estado
                const botonSubmit = document.querySelector('button[type="submit"]');
                botonSubmit.disabled = true;
-               botonSubmit.textContent = 'Procesando...';
+               botonSubmit.textContent = 'Verificando cliente...';
                
-               const respuesta = await Carrito.crearPedido(datospedido);
+               // 3. Obtener o crear cliente
+               let cliente = await Carrito.obtenerClientePorEmail(email);
                
-               // 5. Si éxito, limpiar carrito y redirigir
+               if (!cliente) {
+                   // Crear nuevo cliente
+                   botonSubmit.textContent = 'Creando cliente...';
+                   
+                   const datosCliente = {
+                       nombre: nombres,
+                       apellido: apellidos,
+                       email: email,
+                       celular: celular,
+                       direccion: direccion,
+                       direccion2: direccion2 || '',
+                       descripcion: notas || ''
+                   };
+                   
+                   const respuestaCliente = await Carrito.crearCliente(datosCliente);
+                   cliente = respuestaCliente;
+                   
+                   // El API debería retornar id_cliente o similar
+                   if (!cliente.id_cliente && !cliente.id) {
+                       console.log('Respuesta del cliente:', respuestaCliente);
+                       throw new Error('No se obtuvo ID del cliente');
+                   }
+               }
+               
+               // Obtener el ID correcto
+               const idCliente = cliente.id_cliente || cliente.id;
+               
+               // 4. Preparar datos del pedido con estructura del backend
+               const productos = carrito.map(item => ({
+                   id_producto: item.id,
+                   cantidad: item.cantidad,
+                   precio: parseFloat(item.precio)
+               }));
+               
+               // Calcular totales
+               const subtotal = Carrito.obtenerSubtotal();
+               const impuesto = Carrito.calcularImpuesto();
+               const domicilio = Carrito.CONFIG.DOMICILIO_COSTO;
+               const total = Carrito.calcularTotal();
+               
+               // Determinar descuento o aumento según método de pago
+               let descuento = 0;
+               let aumento = 0;
+               if (metodoPago === 'contra-entrega') {
+                   // Contra entrega tiene 5% de aumento (según checkout.html)
+                   aumento = total * 0.05;
+               }
+               
+               botonSubmit.textContent = 'Creando pedido...';
+               
+               const datosPedido = {
+                   id_cliente: idCliente,
+                   metodo_pago: metodoPago,
+                   productos: productos,
+                   descuento: descuento,
+                   aumento: aumento
+               };
+               
+               // 5. Enviar pedido
+               const respuesta = await Carrito.crearPedido(datosPedido);
+               
+               // 6. Si éxito, limpiar carrito y redirigir
                Carrito.limpiarCarrito();
                
                // Guardar ID del pedido en sessionStorage para la página de éxito
                sessionStorage.setItem('ultimoPedido', JSON.stringify({
                    id: respuesta.id,
                    fecha: new Date().toLocaleDateString(),
-                   total: datospedido.total
+                   cliente: nombres + ' ' + apellidos,
+                   email: email
                }));
                
-               Carrito.mostrarNotificacion('¡Pedido creado exitosamente!', 'success', 4000);
+               Carrito.mostrarNotificacion('¡Pedido creado exitosamente! ID: ' + respuesta.id, 'success', 4000);
                
                // Redirigir a página de éxito
                setTimeout(() => {

@@ -1,0 +1,206 @@
+#!/bin/bash
+# 📋 GUÍA DE PRUEBA RÁPIDA
+# Verificación de integración API - Carrito de Compras
+
+echo "╔═══════════════════════════════════════════════════════════════╗"
+echo "║        GUÍA DE PRUEBA - CARRITO INTEGRADO CON API            ║"
+echo "╚═══════════════════════════════════════════════════════════════╝"
+echo ""
+
+# PASO 1: Verificar Backend
+echo "📌 PASO 1: Iniciar Backend"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+echo "Ejecuta en una terminal:"
+echo "  cd BACKEND_TIENDA_NODE_MYSQL/BACKEND_TIENDA_NODE_MYSQL"
+echo "  npm install"
+echo "  npm start"
+echo ""
+echo "✅ Backend debe estar en: http://localhost:3000"
+echo ""
+echo "Verifica que estos endpoints respondan:"
+echo "  GET http://localhost:3000/api/productos"
+echo "  GET http://localhost:3000/api/clientes"
+echo "  POST http://localhost:3000/api/clientes (crear)"
+echo "  POST http://localhost:3000/api/pedidos (crear)"
+echo ""
+
+# PASO 2: Iniciar Frontend
+echo "📌 PASO 2: Iniciar Frontend"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+echo "OPCIÓN A: Python Simple Server (Recomendado)"
+echo "  cd Restaurant\\ Website/Restaurant\\ Website/platilla-carrito/"
+echo "  python3 -m http.server 5000"
+echo "  Visita: http://localhost:5000/index.html"
+echo ""
+echo "OPCIÓN B: Abrir archivo local"
+echo "  file:///path/to/platilla-carrito/index.html"
+echo ""
+echo "✅ Frontend debe estar en: http://localhost:5000"
+echo ""
+
+# PASO 3: Pruebas
+echo "📌 PASO 3: Pruebas del Sistema"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+echo "TEST 1: Carga de Productos"
+echo "  ✓ Abre http://localhost:5000/index.html"
+echo "  ✓ Verifica que se cargan productos desde la API"
+echo "  ✓ No debe haber productos 'hardcodeados'"
+echo "  ✓ Abre DevTools (F12) → Network → Busca GET /api/productos"
+echo ""
+
+echo "TEST 2: Agregar al Carrito"
+echo "  ✓ Haz clic en 'Agregar' en cualquier producto"
+echo "  ✓ Verifica que el contador se incrementa"
+echo "  ✓ localStorage debe tener 'carrito_compras'"
+echo "  ✓ DevTools → Application → localStorage → carrito_compras"
+echo ""
+
+echo "TEST 3: Ver Carrito"
+echo "  ✓ Haz clic en el carrito (ícono)"
+echo "  ✓ Debe ir a cart.html"
+echo "  ✓ Verifica que se muestren los productos"
+echo "  ✓ Modifica cantidades"
+echo ""
+
+echo "TEST 4: Ir a Checkout"
+echo "  ✓ En cart.html, haz clic en 'Ir a pagar'"
+echo "  ✓ Debe mostrar resumen de productos"
+echo "  ✓ Calcula total con impuesto y domicilio"
+echo ""
+
+echo "TEST 5: Crear Pedido (Nuevo Cliente)"
+echo "  ✓ Llena el formulario con datos válidos:"
+echo "    • Nombres: Juan"
+echo "    • Apellidos: Pérez"
+echo "    • Email: juan@example.com"
+echo "    • Celular: 31234567890"
+echo "    • Dirección: Calle 10 #20-30"
+echo "    • Método: Contra entrega"
+echo "  ✓ Haz clic en 'Place Order'"
+echo "  ✓ DevTools → Network → POST /api/clientes"
+echo "  ✓ Debe crear cliente automáticamente"
+echo "  ✓ DevTools → Network → POST /api/pedidos"
+echo "  ✓ Debe crear pedido con id_cliente"
+echo ""
+
+echo "TEST 6: Crear Pedido (Cliente Existente)"
+echo "  ✓ Agrega productos nuevamente"
+echo "  ✓ Ve a checkout"
+echo "  ✓ Usa el mismo email (juan@example.com)"
+echo "  ✓ Haz clic en 'Place Order'"
+echo "  ✓ DevTools → Network → GET /api/clientes?email=juan@example.com"
+echo "  ✓ No debe crear cliente (ya existe)"
+echo "  ✓ Debe usar id_cliente existente"
+echo ""
+
+echo "TEST 7: Confirmación"
+echo "  ✓ Debe redirigir a thankyou.html"
+echo "  ✓ Debe mostrar número de pedido"
+echo "  ✓ localStorage debe estar vacío"
+echo ""
+
+# PASO 4: Validaciones
+echo "📌 PASO 4: Validaciones"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+echo "Email:"
+echo "  ❌ test (sin @)"
+echo "  ❌ test@ (sin dominio)"
+echo "  ✅ test@example.com"
+echo ""
+echo "Celular (11-15 dígitos):"
+echo "  ❌ 123456789 (9 dígitos)"
+echo "  ❌ 31234567890123456 (17 dígitos)"
+echo "  ✅ 31234567890 (11 dígitos)"
+echo ""
+echo "Campos Requeridos:"
+echo "  ❌ Envía sin llenar Nombres"
+echo "  ❌ Envía sin llenar Apellidos"
+echo "  ❌ Envía sin llenar Email"
+echo "  ❌ Envía sin llenar Celular"
+echo "  ❌ Envía sin llenar Dirección"
+echo ""
+
+# PASO 5: Estructura de Datos
+echo "📌 PASO 5: Verificar Estructura de Datos"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+echo "JSON enviado a POST /api/pedidos:"
+echo ""
+cat << 'JSON'
+{
+    "id_cliente": 5,
+    "metodo_pago": "contra-entrega",
+    "productos": [
+        {
+            "id_producto": 1,
+            "cantidad": 2,
+            "precio": 10.50
+        }
+    ],
+    "descuento": 0,
+    "aumento": 0.5
+}
+JSON
+echo ""
+echo "✅ Estructura debe ser EXACTA"
+echo "✅ id_cliente: número entero"
+echo "✅ metodo_pago: string"
+echo "✅ productos: array de objetos"
+echo ""
+
+# PASO 6: Base de Datos
+echo "📌 PASO 6: Verificar Base de Datos"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+echo "Tabla: productos"
+echo "  SELECT * FROM productos;"
+echo ""
+echo "Tabla: clientes"
+echo "  SELECT * FROM clientes;"
+echo "  (Debe incluir cliente creado en TEST 5)"
+echo ""
+echo "Tabla: pedido"
+echo "  SELECT * FROM pedido;"
+echo "  (Debe incluir pedido creado en TEST 5 y TEST 6)"
+echo ""
+echo "Tabla: detalle_pedido"
+echo "  SELECT * FROM detalle_pedido;"
+echo "  (Debe haber registros para cada producto en pedido)"
+echo ""
+
+# PASO 7: Solución de Problemas
+echo "📌 PASO 7: Solución de Problemas"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+echo "❌ Error: No se cargan productos en index.html"
+echo "  → Verifica que backend esté en http://localhost:3000"
+echo "  → Abre DevTools (F12) → Network → Ver error de fetch"
+echo "  → Verifica que GET /api/productos retorna datos"
+echo ""
+echo "❌ Error: No se puede crear cliente"
+echo "  → Verifica email válido y único"
+echo "  → Revisa DevTools → Network → POST /api/clientes"
+echo "  → Mira la respuesta del error"
+echo ""
+echo "❌ Error: No se puede crear pedido"
+echo "  → Verifica que id_cliente sea correcto"
+echo "  → Revisa que metodo_pago sea válido"
+echo "  → Verifica array de productos no vacío"
+echo "  → Abre DevTools → Network → POST /api/pedidos"
+echo ""
+echo "❌ Error: CORS"
+echo "  → Backend debe tener CORS habilitado"
+echo "  → Frontend puede estar en diferente puerto (normal)"
+echo ""
+
+echo ""
+echo "╔═══════════════════════════════════════════════════════════════╗"
+echo "║                    ✅ PRUEBA COMPLETA ✅                       ║"
+echo "╚═══════════════════════════════════════════════════════════════╝"
+echo ""
+echo "Si todas las pruebas pasan, el sistema está listo para producción."
+echo ""
