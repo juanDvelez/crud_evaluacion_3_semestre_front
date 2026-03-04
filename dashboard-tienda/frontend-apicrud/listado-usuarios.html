@@ -20,6 +20,9 @@
     <!-- Custom styles for this template-->
     <link href="css/sb-admin-2.min.css" rel="stylesheet">
 
+    <!-- API Utilities -->
+    <script src="js/api.js"></script>
+
 </head>
 
 <body id="page-top">
@@ -302,8 +305,270 @@
 
     <!-- Los estudiantes deben agregar aquí el JavaScript para cargar usuarios desde la API -->
     <script>
-        // TODO: Implementar carga de usuarios desde API GET /api/usuarios
-        // Mostrar en la tabla con botones de editar y eliminar
+        const API_BASE = 'http://localhost:3000/api';
+        let usuariosGlobal = [];
+        const ROLES = ['administrador', 'vendedor', 'cajero'];
+        const COLORES_ROL = {
+            'administrador': 'danger',
+            'vendedor': 'info',
+            'cajero': 'warning'
+        };
+
+        // Cargar usuarios al iniciar
+        document.addEventListener('DOMContentLoaded', () => {
+            cargarUsuarios();
+            
+            // Evento de búsqueda
+            const searchInput = document.querySelector('input[placeholder="Buscar Usuario"]');
+            searchInput.addEventListener('keyup', filtrarUsuarios);
+        });
+
+        async function cargarUsuarios() {
+            try {
+                const response = await fetch(`${API_BASE}/usuarios`);
+                if (!response.ok) throw new Error('Error al cargar usuarios');
+                
+                usuariosGlobal = await response.json();
+                mostrarUsuarios(usuariosGlobal);
+                mostrarAlerta('Usuarios cargados correctamente', 'success');
+            } catch (error) {
+                console.error(error);
+                mostrarAlerta('Error al cargar usuarios: ' + error.message, 'danger');
+            }
+        }
+
+        function mostrarUsuarios(usuarios) {
+            const tbody = document.querySelector('#tabla-usuarios');
+            tbody.innerHTML = '';
+
+            if (usuarios.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">No hay usuarios registrados</td></tr>';
+                return;
+            }
+
+            usuarios.forEach(usuario => {
+                const fila = document.createElement('tr');
+                const fechaCreado = usuario.creado_en ? new Date(usuario.creado_en).toLocaleDateString('es-CO') : '-';
+                const colorRol = COLORES_ROL[usuario.rol] || 'secondary';
+
+                fila.innerHTML = `
+                    <td><strong>${usuario.id}</strong></td>
+                    <td>${usuario.usuario}</td>
+                    <td>
+                        <span class="badge badge-${colorRol}">
+                            ${usuario.rol.charAt(0).toUpperCase() + usuario.rol.slice(1)}
+                        </span>
+                    </td>
+                    <td>${fechaCreado}</td>
+                    <td>
+                        <button class="btn btn-sm btn-warning" onclick="editarUsuario(${usuario.id})" title="Editar">
+                            <i class="fas fa-edit"></i> Editar
+                        </button>
+                        <button class="btn btn-sm btn-danger" onclick="eliminarUsuario(${usuario.id})" title="Eliminar">
+                            <i class="fas fa-trash"></i> Eliminar
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(fila);
+            });
+        }
+
+        function filtrarUsuarios() {
+            const searchInput = document.querySelector('input[placeholder="Buscar Usuario"]');
+            const termino = searchInput.value.toLowerCase();
+            
+            const usuariosFiltrados = usuariosGlobal.filter(u => 
+                u.id.toString().includes(termino) || 
+                u.usuario.toLowerCase().includes(termino) ||
+                u.rol.toLowerCase().includes(termino)
+            );
+            
+            mostrarUsuarios(usuariosFiltrados);
+        }
+
+        function editarUsuario(id) {
+            const usuario = usuariosGlobal.find(u => u.id === id);
+            if (!usuario) {
+                mostrarAlerta('Usuario no encontrado', 'danger');
+                return;
+            }
+
+            // Crear o usar modal existente
+            let modal = document.getElementById('editarUsuarioModal');
+            if (!modal) {
+                modal = crearModalEdicionUsuario();
+            }
+
+            // Llenar el modal con los datos
+            document.getElementById('editar-usuario-id').value = id;
+            document.getElementById('editar-usuario-usuario').value = usuario.usuario;
+            document.getElementById('editar-usuario-rol').value = usuario.rol;
+            document.getElementById('editar-usuario-contrasena').value = '';
+            document.getElementById('editar-usuario-confirmar').value = '';
+
+            jQuery('#'+modal.id).modal('show');
+        }
+
+        function crearModalEdicionUsuario() {
+            const modal = document.createElement('div');
+            modal.id = 'editarUsuarioModal';
+            modal.className = 'modal fade';
+            modal.setAttribute('tabindex', '-1');
+            modal.innerHTML = `
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header bg-warning">
+                            <h5 class="modal-title">Editar Usuario</h5>
+                            <button type="button" class="close" data-dismiss="modal">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+                        <div class="modal-body">
+                            <input type="hidden" id="editar-usuario-id">
+                            
+                            <div class="form-group">
+                                <label>Usuario (Nombre de login) *</label>
+                                <input type="text" id="editar-usuario-usuario" class="form-control" required>
+                                <small class="text-muted">No se puede cambiar</small>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>Rol *</label>
+                                <select id="editar-usuario-rol" class="form-control" required>
+                                    <option value="administrador">Administrador</option>
+                                    <option value="vendedor">Vendedor</option>
+                                    <option value="cajero">Cajero</option>
+                                </select>
+                            </div>
+
+                            <hr>
+
+                            <h6>Cambiar Contraseña (Opcional)</h6>
+                            
+                            <div class="form-group">
+                                <label>Contraseña Nueva</label>
+                                <input type="password" id="editar-usuario-contrasena" class="form-control">
+                                <small class="text-muted">Mínimo 6 caracteres. Dejar en blanco para mantener actual</small>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Confirmar Contraseña</label>
+                                <input type="password" id="editar-usuario-confirmar" class="form-control">
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                            <button type="button" class="btn btn-warning" onclick="guardarEdicionUsuario()">Guardar Cambios</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+            return modal;
+        }
+
+        async function guardarEdicionUsuario() {
+            const id = document.getElementById('editar-usuario-id').value;
+            const usuario = document.getElementById('editar-usuario-usuario').value;
+            const rol = document.getElementById('editar-usuario-rol').value;
+            const contrasena = document.getElementById('editar-usuario-contrasena').value;
+            const confirmar = document.getElementById('editar-usuario-confirmar').value;
+
+            // Validaciones
+            const errores = [];
+
+            if (!usuario.trim()) {
+                errores.push('El usuario es requerido');
+            }
+
+            if (!rol) {
+                errores.push('El rol es requerido');
+            }
+
+            // Si se proporciona contraseña, validar
+            if (contrasena || confirmar) {
+                if (contrasena !== confirmar) {
+                    errores.push('Las contraseñas no coinciden');
+                }
+
+                if (contrasena.length < 6) {
+                    errores.push('La contraseña debe tener mínimo 6 caracteres');
+                }
+            }
+
+            if (errores.length > 0) {
+                alert('Errores:\n\n' + errores.join('\n'));
+                return;
+            }
+
+            const datos = {
+                usuario: usuario,
+                rol: rol
+            };
+
+            if (contrasena) {
+                datos.contrasena = contrasena;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/usuarios/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(datos)
+                });
+
+                if (!response.ok) throw new Error('Error al actualizar usuario');
+
+                mostrarAlerta('Usuario actualizado correctamente', 'success');
+                cargarUsuarios();
+                
+                // Cerrar modal
+                jQuery('#editarUsuarioModal').modal('hide');
+            } catch (error) {
+                console.error(error);
+                mostrarAlerta('Error: ' + error.message, 'danger');
+            }
+        }
+
+        async function eliminarUsuario(id) {
+            if (!confirm('¿Está seguro de que desea eliminar este usuario? Esta acción no se puede deshacer.')) return;
+
+            try {
+                const response = await fetch(`${API_BASE}/usuarios/${id}`, {
+                    method: 'DELETE'
+                });
+
+                if (!response.ok) throw new Error('Error al eliminar usuario');
+
+                mostrarAlerta('Usuario eliminado correctamente', 'success');
+                cargarUsuarios();
+            } catch (error) {
+                console.error(error);
+                mostrarAlerta('Error: ' + error.message, 'danger');
+            }
+        }
+
+        function mostrarAlerta(mensaje, tipo = 'info') {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${tipo} alert-dismissible fade show`;
+            alertDiv.setAttribute('role', 'alert');
+            alertDiv.innerHTML = `
+                ${mensaje}
+                <button type="button" class="close" data-dismiss="alert">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            `;
+
+            const container = document.querySelector('.container-fluid');
+            const heading = container.querySelector('.d-sm-flex');
+            if (heading) {
+                heading.parentNode.insertBefore(alertDiv, heading.nextSibling);
+            } else {
+                container.insertBefore(alertDiv, container.firstChild);
+            }
+
+            setTimeout(() => alertDiv.remove(), 5000);
+        }
     </script>
 
 </body>
