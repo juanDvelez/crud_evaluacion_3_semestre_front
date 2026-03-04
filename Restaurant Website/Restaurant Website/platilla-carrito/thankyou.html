@@ -163,22 +163,61 @@
 
    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
    
+   <!-- Carrito Script -->
+   <script src="js/carrito.js"></script>
+   
+   <!-- Lógica de Página de Éxito -->
    <script>
-     // TODO: Obtener datos del pedido y mostrarlos en la página
-     // Los datos pueden venir de:
-     // 1. localStorage (carrito previo guardado)
-     // 2. Respuesta de la API después de crear el pedido
-     // 3. Parámetros de URL
-     
-     document.addEventListener('DOMContentLoaded', () => {
-       // Generar número de pedido (en producción viene de la base de datos)
-       const numeroPedido = '#PED-' + Date.now().toString().slice(-6);
-       document.getElementById('numero-pedido-final').textContent = numeroPedido;
-       localStorage.setItem('numeroPedido', numeroPedido);
+       /**
+        * PÁGINA DE CONFIRMACIÓN - thankyou.html
+        * Mostrar confirmación del pedido y limpiar carrito
+        */
        
-       // Limpiar el carrito después de confirmar
-       localStorage.removeItem('carrito');
-     });
+       document.addEventListener('DOMContentLoaded', function() {
+           // Obtener información del pedido guardada en sessionStorage
+           const ultimoPedido = sessionStorage.getItem('ultimoPedido');
+           
+           if (ultimoPedido) {
+               const pedido = JSON.parse(ultimoPedido);
+               
+               // Mostrar número de pedido
+               const numeroPedido = '#PED-' + padZero(pedido.id, 6);
+               document.getElementById('numero-pedido-final').textContent = numeroPedido;
+               
+               // Mostrar tiempo estimado (30-45 minutos)
+               const tiempoEntrega = document.getElementById('tiempo-entrega');
+               tiempoEntrega.textContent = '30-45 minutos';
+               
+               // Limpiar sessionStorage
+               sessionStorage.removeItem('ultimoPedido');
+           } else {
+               // Si no hay información, generar un ID de demostración
+               const id = Math.floor(Math.random() * 10000);
+               document.getElementById('numero-pedido-final').textContent = '#PED-' + padZero(id, 6);
+           }
+           
+           // Limpiar el carrito de localStorage después de confirmar
+           Carrito.limpiarCarrito();
+           
+           // Event listener para volver al inicio
+           const btnVolver = document.querySelector('.cus-btn.dark');
+           if (btnVolver) {
+               btnVolver.addEventListener('click', function(e) {
+                   e.preventDefault();
+                   window.location.href = 'index.html';
+               });
+           }
+       });
+       
+       /**
+        * Agregar ceros a la izquierda de un número
+        * @param {Number} num - Número
+        * @param {Number} len - Longitud deseada
+        * @returns {String} Número con ceros a la izquierda
+        */
+       function padZero(num, len) {
+           return String(num).padStart(len, '0');
+       }
    </script>
 </body>
 </html>

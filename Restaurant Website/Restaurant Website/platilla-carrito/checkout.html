@@ -225,5 +225,169 @@
    <a href="#" class="arrow"><i class="fa-solid fa-arrow-up"></i></a>
 
    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
+   
+   <!-- Carrito Script -->
+   <script src="js/carrito.js"></script>
+   
+   <!-- Lógica de Página Checkout -->
+   <script>
+       /**
+        * PÁGINA DE CHECKOUT - checkout.html
+        * Funcionalidad para procesar el pedido
+        */
+       
+       document.addEventListener('DOMContentLoaded', function() {
+           // Mostrar resumen del carrito
+           mostrarResumenCheckout();
+           
+           // Validar y enviar formulario
+           const formCheckout = document.getElementById('form-checkout');
+           formCheckout.addEventListener('submit', function(e) {
+               e.preventDefault();
+               procesarPedido();
+           });
+       });
+       
+       /**
+        * Mostrar resumen del carrito en checkout
+        */
+       function mostrarResumenCheckout() {
+           const carrito = Carrito.obtenerCarrito();
+           const detalleDiv = document.getElementById('detalle-productos-checkout');
+           const totalCheckoutDiv = document.getElementById('total-checkout');
+           
+           if (carrito.length === 0) {
+               detalleDiv.innerHTML = '<p>El carrito está vacío. <a href="cart.html">Volver al carrito</a></p>';
+               return;
+           }
+           
+           // Mostrar detalles de productos
+           let html = '';
+           carrito.forEach(item => {
+               const subtotal = item.precio * item.cantidad;
+               html += `
+                   <div class="d-flex justify-content-between align-items-center mb-24">
+                       <p class="lead color-black">${item.nombre} x ${item.cantidad}</p>
+                       <p class="lead">${Carrito.formatearMoneda(subtotal)}</p>
+                   </div>
+               `;
+           });
+           
+           // Agregar líneas de cálculo
+           const subtotal = Carrito.obtenerSubtotal();
+           const impuesto = Carrito.calcularImpuesto();
+           const domicilio = Carrito.CONFIG.DOMICILIO_COSTO;
+           const total = Carrito.calcularTotal();
+           
+           html += `
+               <hr>
+               <div class="d-flex justify-content-between align-items-center mb-24">
+                   <p class="lead color-black">Subtotal</p>
+                   <p class="lead">${Carrito.formatearMoneda(subtotal)}</p>
+               </div>
+               <div class="d-flex justify-content-between align-items-center mb-24">
+                   <p class="lead color-black">Impuesto (19%)</p>
+                   <p class="lead">${Carrito.formatearMoneda(impuesto)}</p>
+               </div>
+               <div class="d-flex justify-content-between align-items-center mb-24">
+                   <p class="lead color-black">Domicilio</p>
+                   <p class="lead">${Carrito.formatearMoneda(domicilio)}</p>
+               </div>
+           `;
+           
+           detalleDiv.innerHTML = html;
+           totalCheckoutDiv.textContent = Carrito.formatearMoneda(total);
+       }
+       
+       /**
+        * Procesar el pedido
+        */
+       async function procesarPedido() {
+           try {
+               // 1. Validar formulario
+               const nombres = document.getElementById('nombres-checkout').value.trim();
+               const apellidos = document.getElementById('apellidos-checkout').value.trim();
+               const email = document.getElementById('email-checkout').value.trim();
+               const celular = document.getElementById('celular-checkout').value.trim();
+               const direccion = document.getElementById('direccion-checkout').value.trim();
+               const notas = document.getElementById('notas-checkout').value.trim();
+               const metodoPago = document.querySelector('input[name="metodo-pago"]:checked').value;
+               
+               // Validar campos requeridos
+               if (!nombres) throw new Error('Nombres es requerido');
+               if (!apellidos) throw new Error('Apellidos es requerido');
+               if (!email) throw new Error('Email es requerido');
+               if (!celular) throw new Error('Celular es requerido');
+               if (!direccion) throw new Error('Dirección es requerido');
+               
+               // Validar email
+               if (!Carrito.validarEmail(email)) {
+                   throw new Error('Email no válido');
+               }
+               
+               // Validar teléfono
+               if (!Carrito.validarTelefono(celular)) {
+                   throw new Error('Celular debe tener entre 11 y 15 dígitos');
+               }
+               
+               // 2. Obtener carrito
+               const carrito = Carrito.obtenerCarrito();
+               if (carrito.length === 0) {
+                   throw new Error('El carrito está vacío');
+               }
+               
+               // 3. Preparar datos del pedido
+               const productos = carrito.map(item => ({
+                   id_producto: item.id,
+                   cantidad: item.cantidad
+               }));
+               
+               const datospedido = {
+                   nombre_cliente: nombres + ' ' + apellidos,
+                   email: email,
+                   telefono: celular,
+                   direccion: direccion,
+                   metodo_pago: metodoPago,
+                   estado: 'pendiente',
+                   total: Carrito.calcularTotal(),
+                   notas: notas,
+                   productos: productos
+               };
+               
+               // 4. Enviar pedido
+               const botonSubmit = document.querySelector('button[type="submit"]');
+               botonSubmit.disabled = true;
+               botonSubmit.textContent = 'Procesando...';
+               
+               const respuesta = await Carrito.crearPedido(datospedido);
+               
+               // 5. Si éxito, limpiar carrito y redirigir
+               Carrito.limpiarCarrito();
+               
+               // Guardar ID del pedido en sessionStorage para la página de éxito
+               sessionStorage.setItem('ultimoPedido', JSON.stringify({
+                   id: respuesta.id,
+                   fecha: new Date().toLocaleDateString(),
+                   total: datospedido.total
+               }));
+               
+               Carrito.mostrarNotificacion('¡Pedido creado exitosamente!', 'success', 4000);
+               
+               // Redirigir a página de éxito
+               setTimeout(() => {
+                   window.location.href = 'thankyou.html';
+               }, 1500);
+               
+           } catch (error) {
+               console.error('Error:', error);
+               Carrito.mostrarNotificacion(`Error: ${error.message}`, 'danger', 4000);
+               
+               // Re-habilitar botón
+               const botonSubmit = document.querySelector('button[type="submit"]');
+               botonSubmit.disabled = false;
+               botonSubmit.textContent = 'Place Order';
+           }
+       }
+   </script>
 </body>
 </html>

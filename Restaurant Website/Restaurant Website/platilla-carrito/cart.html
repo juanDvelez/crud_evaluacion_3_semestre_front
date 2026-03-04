@@ -301,24 +301,131 @@
 
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
+    
+    <!-- Carrito Script -->
+    <script src="js/carrito.js"></script>
+    
+    <!-- Lógica de Página del Carrito -->
     <script>
-        let btnDecrement = document.querySelectorAll(".decrement i");
-        let btnIncrement = document.querySelectorAll(".increment i");
-        let countProduct = document.querySelectorAll(".quantity input.number");
-        btnIncrement.forEach((btnI, pos)=>{
-            btnI.addEventListener('click', () => {
-                const currentValue = parseInt(countProduct[pos].value);
-                countProduct[pos].value = currentValue + 1;
-            });
-        })
-        btnDecrement.forEach((btnD, pos)=>{
-            btnD.addEventListener('click', () => {
-                const currentValue = parseInt(countProduct[pos].value);
-                if (currentValue > 1) {
-                    countProduct[pos].value = currentValue - 1;
+        /**
+         * PÁGINA DEL CARRITO - cart.html
+         * Funcionalidad para visualizar y modificar el carrito
+         */
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            // Mostrar carrito al cargar
+            mostrarCarrito();
+            
+            // Event delegation para botones de eliminar
+            document.getElementById('carrito-items').addEventListener('click', function(e) {
+                if (e.target.closest('.remove-from-cart-btn')) {
+                    e.preventDefault();
+                    const btn = e.target.closest('.remove-from-cart-btn');
+                    const fila = btn.closest('tr');
+                    const productId = parseInt(fila.dataset.id);
+                    
+                    Carrito.eliminarDelCarrito(productId);
+                    mostrarCarrito();
                 }
-            })  
+            });
+            
+            // Event delegation para cambio de cantidad
+            document.getElementById('carrito-items').addEventListener('change', function(e) {
+                if (e.target.classList.contains('quantity-input')) {
+                    const fila = e.target.closest('tr');
+                    const productId = parseInt(fila.dataset.id);
+                    const nuevaCantidad = parseInt(e.target.value);
+                    
+                    Carrito.actualizarCantidad(productId, nuevaCantidad);
+                    mostrarCarrito();
+                }
+            });
         });
+        
+        /**
+         * Mostrar carrito en la tabla
+         */
+        function mostrarCarrito() {
+            const carrito = Carrito.obtenerCarrito();
+            const tbody = document.getElementById('carrito-items');
+            
+            // Limpiar tabla
+            tbody.innerHTML = '';
+            
+            if (carrito.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4"><p>El carrito está vacío</p></td></tr>';
+                actualizarResumen();
+                return;
+            }
+            
+            // Agregar filas
+            carrito.forEach(item => {
+                const subtotal = item.precio * item.cantidad;
+                
+                const fila = document.createElement('tr');
+                fila.dataset.id = item.id;
+                fila.innerHTML = `
+                    <td class="product-block">
+                        <a href="#" class="remove-from-cart-btn" title="Eliminar"><i class="fa-solid fa-x"></i></a>
+                        <img src="${item.imagen}" alt="${item.nombre}" style="max-width: 60px;">
+                        <a href="#" class="h6">${item.nombre}</a>
+                    </td>
+                    <td>
+                        <p class="lead color-black">${Carrito.formatearMoneda(item.precio)}</p>
+                    </td>
+                    <td>
+                        <div class="quantity quantity-wrap">
+                            <div class="decrement"><i class="fa-solid fa-minus"></i></div>
+                            <input type="number" name="quantity" value="${item.cantidad}" min="1" class="number quantity-input" style="width: 50px; text-align: center;">
+                            <div class="increment"><i class="fa-solid fa-plus"></i></div>
+                        </div>
+                    </td>
+                    <td>
+                        <h6>${Carrito.formatearMoneda(subtotal)}</h6>
+                    </td>
+                `;
+                
+                tbody.appendChild(fila);
+            });
+            
+            // Event listeners para +/- 
+            document.querySelectorAll('.decrement').forEach((btn, idx) => {
+                btn.addEventListener('click', function() {
+                    const input = this.nextElementSibling;
+                    const valor = parseInt(input.value);
+                    if (valor > 1) {
+                        input.value = valor - 1;
+                        input.dispatchEvent(new Event('change'));
+                    }
+                });
+            });
+            
+            document.querySelectorAll('.increment').forEach((btn, idx) => {
+                btn.addEventListener('click', function() {
+                    const input = this.previousElementSibling;
+                    const valor = parseInt(input.value);
+                    input.value = valor + 1;
+                    input.dispatchEvent(new Event('change'));
+                });
+            });
+            
+            actualizarResumen();
+        }
+        
+        /**
+         * Actualizar resumen del carrito
+         */
+        function actualizarResumen() {
+            const subtotal = Carrito.obtenerSubtotal();
+            const impuesto = Carrito.calcularImpuesto();
+            const domicilio = Carrito.CONFIG.DOMICILIO_COSTO;
+            const total = Carrito.calcularTotal();
+            
+            document.getElementById('subtotal-resumen').textContent = Carrito.formatearMoneda(subtotal);
+            document.getElementById('domicilio-resumen').textContent = Carrito.formatearMoneda(domicilio);
+            document.getElementById('descuento-resumen').textContent = `-${Carrito.formatearMoneda(0)}`;
+            document.getElementById('total-resumen').textContent = Carrito.formatearMoneda(total);
+        }
     </script>
 </body>
 </html>
